@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback, useEffect, Component } from 'react';
 import { StyleSheet, View, Text, StatusBar, BackHandler, ActivityIndicator, Pressable } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const REMOTE_URL = 'https://sonique-boom.replit.app';
 
@@ -41,6 +42,7 @@ class ErrorBoundary extends Component {
 }
 
 function PlayerWebView() {
+  const insets = useSafeAreaInsets();
   const webViewRef = useRef(null);
   const canGoBackRef = useRef(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -77,7 +79,7 @@ function PlayerWebView() {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       <StatusBar hidden />
       <WebView
         ref={webViewRef}
@@ -132,9 +134,11 @@ function PlayerWebView() {
 
 export default function App() {
   return (
-    <ErrorBoundary>
-      <PlayerWebView />
-    </ErrorBoundary>
+    <SafeAreaProvider>
+      <ErrorBoundary>
+        <PlayerWebView />
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }
 
