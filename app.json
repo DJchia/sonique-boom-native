@@ -23,17 +23,16 @@
       "minSdkVersion": 24,
       "compileSdkVersion": 35,
       "permissions": [
-        "android.permission.INTERNET",
-        "android.permission.WAKE_LOCK"
+        "android.permission.INTERNET"
       ]
     },
-    "plugins": [
-      "expo-keep-awake"
-    ],
     "extra": {
       "eas": {
         "projectId": "055067b6-7221-4dd2-b6a9-73890c14747e"
       }
-    }
+    },
+    "plugins": [
+      "expo-asset"
+    ]
   }
 }

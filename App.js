@@ -1,11 +1,20 @@
 import { useRef, useState, useCallback, useEffect, Component } from 'react';
-import { StyleSheet, View, Text, StatusBar, BackHandler } from 'react-native';
+import { StyleSheet, View, Text, StatusBar, BackHandler, ActivityIndicator, Pressable } from 'react-native';
 import { WebView } from 'react-native-webview';
-import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 
 const REMOTE_URL = 'https://sonique-boom.replit.app';
 
 const source = { uri: REMOTE_URL };
+
+if (global.ErrorUtils) {
+  const defaultHandler = global.ErrorUtils.getGlobalHandler && global.ErrorUtils.getGlobalHandler();
+  global.ErrorUtils.setGlobalHandler((error, isFatal) => {
+    console.error(`[SoniqueBoom] Uncaught JS error${isFatal ? ' (fatal)' : ''}:`, error);
+    if (defaultHandler) {
+      defaultHandler(error, isFatal);
+    }
+  });
+}
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -33,24 +42,26 @@ class ErrorBoundary extends Component {
 
 function PlayerWebView() {
   const webViewRef = useRef(null);
-  const [keepAwake, setKeepAwake] = useState(false);
   const canGoBackRef = useRef(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
-  const handleMessage = useCallback(async (event) => {
+  const handleMessage = useCallback((event) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
       if (data.type === 'PRESENTATION_MODE') {
-        if (data.enabled) {
-          await activateKeepAwakeAsync('presentation');
-          setKeepAwake(true);
-        } else {
-          deactivateKeepAwake('presentation');
-          setKeepAwake(false);
-        }
+        // Keep-awake handling removed for now; message is accepted and
+        // ignored so the web app's postMessage calls don't error out.
       }
     } catch (e) {
       // ignore non-JSON messages
     }
+  }, []);
+
+  const handleRetry = useCallback(() => {
+    setLoadError(null);
+    setIsLoading(true);
+    webViewRef.current?.reload();
   }, []);
 
   useEffect(() => {
@@ -78,19 +89,43 @@ function PlayerWebView() {
         allowsInlineMediaPlayback={true}
         onMessage={handleMessage}
         originWhitelist={['*']}
-        startInLoadingState={true}
         onNavigationStateChange={(navState) => {
           canGoBackRef.current = navState.canGoBack;
+        }}
+        onLoadStart={() => {
+          setLoadError(null);
+          setIsLoading(true);
+        }}
+        onLoadEnd={() => {
+          setIsLoading(false);
         }}
         onError={(syntheticEvent) => {
           const { nativeEvent } = syntheticEvent;
           console.error('[SoniqueBoom] WebView error:', nativeEvent);
+          setIsLoading(false);
+          setLoadError('load-error');
         }}
         onHttpError={(syntheticEvent) => {
           const { nativeEvent } = syntheticEvent;
           console.warn('[SoniqueBoom] HTTP error:', nativeEvent.statusCode, nativeEvent.url);
+          setIsLoading(false);
+          setLoadError(`http-${nativeEvent.statusCode}`);
         }}
       />
+      {isLoading && !loadError && (
+        <View style={styles.overlay} pointerEvents="none">
+          <ActivityIndicator size="large" color="#00e676" />
+        </View>
+      )}
+      {loadError && (
+        <View style={styles.overlay}>
+          <Text style={styles.errorText}>Couldn't load Sonique Boom.</Text>
+          <Text style={styles.errorSub}>{loadError}</Text>
+          <Pressable style={styles.retryButton} onPress={handleRetry}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 }
@@ -112,6 +147,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0a0e1a',
   },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#0a0e1a',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
   errorContainer: {
     flex: 1,
     backgroundColor: '#0a0e1a',
@@ -130,5 +172,17 @@ const styles = StyleSheet.create({
     color: '#888',
     fontSize: 12,
     textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#00e676',
+    paddingVertical: 10,
+    paddingHorizontal: 28,
+    borderRadius: 6,
+  },
+  retryButtonText: {
+    color: '#0a0e1a',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
