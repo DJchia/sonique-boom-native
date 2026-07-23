@@ -19,9 +19,6 @@
       },
       "package": "com.onyxentertainment.soniqueboom",
       "versionCode": 3,
-      "targetSdkVersion": 35,
-      "minSdkVersion": 24,
-      "compileSdkVersion": 35,
       "permissions": [
         "android.permission.INTERNET"
       ]
@@ -32,7 +29,17 @@
       }
     },
     "plugins": [
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "targetSdkVersion": 35,
+            "compileSdkVersion": 35,
+            "minSdkVersion": 24
+          }
+        }
+      ]
     ]
   }
 }
